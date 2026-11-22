@@ -105,6 +105,9 @@ CONFIG_FILE="/nonexistent/machines.conf"
 DF=$(machine_default);    check "C2 fallback default exists" bash -c "[ -n \"$DF\" ]"
 rm -f "$TMPC"
 
+# ---------- P4: switch call detaches remote stdio (issue #1) ----------
+check "P4 switch redirects remote stdio" grep -qF 'radio ${keys[$((choice-1))]} >/dev/null 2>&1' "$BIN"
+
 # ---------- K2: render-once needs no ssh ----------
 STUB=$(mktemp -d); printf '#!/bin/sh\nexit 127\n' > "$STUB/ssh"; chmod +x "$STUB/ssh"
 OUT=$(PATH="$STUB:$PATH" RADIO_REMOTE_LIB= RADIO_REMOTE_STATE="playing|Demo Station|60|0" "$BIN" --render-once IwIn 2>/dev/null)

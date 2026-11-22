@@ -44,6 +44,11 @@ are exactly radio-ctl's.
   `fish -ic '__radio_stations'`.
 - P3. ssh is always invoked with `-n` (never eats the key stream) and
   a connect timeout.
+- P4. The station-switch call detaches the remote stdio
+  (`radio <key> >/dev/null 2>&1` on the remote side): the spawned mpv
+  inherits the ssh channel and holds it open, so without the redirect
+  ssh never returns and the UI hangs on the station screen
+  (issue #1, reproduced + verified 2026-11-21).
 
 ### Packaging
 - K1. `install.sh` works with `PREFIX` set (Termux) and without

@@ -32,6 +32,7 @@ ok   - C1 known machine dest
 ok   - C1 unknown fails
 ok   - C3 first machine is default
 ok   - C2 fallback default exists
+ok   - P4 switch redirects remote stdio
 ok   - K2 render-once offline
 
-passed: 35  failed: 0
+passed: 36  failed: 0

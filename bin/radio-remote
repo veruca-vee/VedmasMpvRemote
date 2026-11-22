@@ -206,7 +206,7 @@ stations_menu() { # stations_menu (uses DEST)
     read -r choice
     case "$choice" in ''|*[!0-9]*) return ;; esac
     if [ "$choice" -ge 1 ] && [ "$choice" -le "${#keys[@]}" ]; then
-        rfish "radio ${keys[$((choice-1))]}" >/dev/null
+        rfish "radio ${keys[$((choice-1))]} >/dev/null 2>&1" >/dev/null
         sleep 2
     fi
 }
