@@ -1,0 +1,48 @@
+tests/run_tests.sh: line 42: render_frame: command not found
+FAIL - R1 frame opens with ╭
+FAIL - R1 frame closes with ╯
+ok   - R1 uniform line width
+FAIL - R2 shows machine
+FAIL - R2 shows title
+FAIL - R2 shows play glyph
+FAIL - R2 shows volume number
+FAIL - R3 75% -> 15 filled
+tests/run_tests.sh: line 53: render_frame: command not found
+FAIL - R3 0% -> 0 filled
+tests/run_tests.sh: line 55: render_frame: command not found
+FAIL - R3 100% -> 20 filled
+tests/run_tests.sh: line 59: render_frame: command not found
+FAIL - R4 muted shows MUTED
+FAIL - R4 muted bar empty
+tests/run_tests.sh: line 64: render_frame: command not found
+FAIL - R5 standby label
+FAIL - R5 standby hint
+ok   - R5 no fake title
+tests/run_tests.sh: line 70: render_frame: command not found
+FAIL - R6 truncates with …
+FAIL - R6 stays in width
+tests/run_tests.sh: line 76: render_frame: command not found
+FAIL - R7 width 46 respected
+tests/run_tests.sh: line 76: render_frame: command not found
+FAIL - R7 width 38 respected
+tests/run_tests.sh: line 76: render_frame: command not found
+FAIL - R7 width 30 respected
+tests/run_tests.sh: line 79: render_frame: command not found
+tests/run_tests.sh: line 80: render_frame: command not found
+FAIL - R7 full grid has STATIONS at 46
+FAIL - R7 minimal at 30 has legend q
+FAIL - R8 key label 'x' drawn
+FAIL - R8 key label 'space' drawn
+FAIL - R8 key label 'm' drawn
+FAIL - R8 key label 'n' drawn
+FAIL - R8 key label '+' drawn
+FAIL - R8 key label '-' drawn
+FAIL - R8 key label 's' drawn
+FAIL - R8 key label 'q' drawn
+FAIL - C1 known machine dest
+ok   - C1 unknown fails
+FAIL - C3 first machine is default
+FAIL - C2 fallback default exists
+FAIL - K2 render-once offline
+
+passed: 3  failed: 32

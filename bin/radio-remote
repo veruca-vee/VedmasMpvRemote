@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+# radio-remote — a drawn picture remote for the fish radio suite. 🖤🩷
+#
+# The face is box-drawing characters; the protocol underneath is the
+# suite's own: __radio_ctl_once for control, __radio_stations for the
+# station list, radio <key> to switch — all over ssh, one call per key.
+# Keys are radio-ctl's: space pause · +/- volume · m mute · s stations
+# · x stop · n now · q quit (quit never stops the music).
+#
+# Machines come from a config file (see config/machines.example.conf);
+# with no config, the example fleet is the built-in default.
+set -u
+# All width math counts characters; in a C/POSIX locale bash counts
+# bytes and the drawing tears. C.UTF-8 is present on Debian + Termux.
+export LC_ALL=C.UTF-8
+
+# ---------------------------------------------------------------- config
+CONFIG_FILE="${RADIO_REMOTE_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/radio-remote/machines.conf}"
+
+config_rows() {
+    if [ -r "$CONFIG_FILE" ]; then
+        grep -v '^[[:space:]]*#' "$CONFIG_FILE" | grep -v '^[[:space:]]*$'
+    else
+        printf 'iwantitnow\tverucasaltywitch@100.74.247.90\t-\n'
+        printf 'bluefin\tvelrooins@100.79.74.93\t-\n'
+    fi
+}
+
+machine_field() { # machine_field <name> <field#> -> value or rc=1
+    local rows name="$1" fld="$2" n d i
+    rows=$(config_rows)
+    while IFS=$'\t' read -r n d i; do
+        if [ "$n" = "$name" ]; then
+            case "$fld" in
+                2) printf %s "$d" ;;
+                3) printf %s "$i" ;;
+            esac
+            return 0
+        fi
+    done <<< "$rows"
+    return 1
+}
+machine_dest()    { machine_field "$1" 2; }
+machine_ident()   { machine_field "$1" 3; }
+machine_default() { config_rows | head -n1 | cut -f1; }
+machine_names()   { config_rows | cut -f1; }
+
+# ---------------------------------------------------------------- drawing
+rep() { # rep <char> <n>
+    local out="" i
+    for ((i=0; i<$2; i++)); do out+="$1"; done
+    printf %s "$out"
+}
+fit() { # fit <text> <width> — truncate with … or space-pad to width chars
+    local t="$1" w="$2" n=${#1}
+    if [ "$n" -gt "$w" ]; then
+        printf %s "${t:0:$((w-1))}…"
+    else
+        printf %s "$t"
+        rep ' ' $((w-n))
+    fi
+}
+bar_cells() { # bar_cells <vol> <cells> -> filled count
+    echo $(( ($1 * $2 + 50) / 100 ))
+}
+bar_draw() { # bar_draw <vol> <cells> <muted>
+    local cells="$2" f=0
+    [ "$3" = 1 ] || f=$(bar_cells "$1" "$cells")
+    rep '▓' "$f"
+    rep '░' $((cells-f))
+}
+
+# render_frame <width> <machine> <state> <title> <volume> <muted>
+#   state: playing | paused | standby
+render_frame() {
+    local W="$1" machine="$2" state="$3" title="$4" vol="$5" muted="$6"
+    local CW=$((W-4))          # content width inside the outer box
+    local LW=$((W-8))          # LCD inner width
+    local barw=20
+    [ "$W" -lt 42 ] && barw=14
+    [ "$W" -lt 33 ] && barw=10
+    local glyph="▶" stateword="PLAYING"
+    [ "$state" = paused ] && { glyph="❚❚"; stateword="PAUSED"; }
+    [ "$state" = standby ] && { glyph="○"; stateword="STANDBY"; }
+
+    local line
+    # top border + header
+    printf '╭%s╮\n' "$(rep '─' $((W-2)))"
+    local hdr_l=" RADIO REMOTE" hdr_r="$machine "
+    line=$(fit "$hdr_l" $((CW - ${#hdr_r})))
+    printf '│ %s%s │\n' "$line" "$hdr_r"
+    printf '├%s┤\n' "$(rep '─' $((W-2)))"
+    # LCD
+    printf '│ ╔%s╗ │\n' "$(rep '═' $((W-6)))"
+    if [ "$state" = standby ]; then
+        printf '│ ║%s║ │\n' "$(fit " STANDBY — nothing playing" $((LW+2)))"
+        printf '│ ║%s║ │\n' "$(fit " press s to pick a station" $((LW+2)))"
+    else
+        printf '│ ║%s║ │\n' "$(fit " $title" $((LW+2)))"
+        local vtxt
+        if [ "$muted" = 1 ]; then
+            vtxt=" MUTED $(bar_draw "$vol" "$barw" 1) $vol"
+        else
+            vtxt=" $glyph $(bar_draw "$vol" "$barw" 0) $vol"
+        fi
+        printf '│ ║%s║ │\n' "$(fit "$vtxt" $((LW+2)))"
+    fi
+    printf '│ ╚%s╝ │\n' "$(rep '═' $((W-6)))"
+
+    if [ "$W" -ge 42 ]; then
+        # full button grid: buttons 9 wide, 4 per row, then a wide row
+        local top mid key bot
+        btn() { # btn <label> <key> <width>
+            local w="$3"
+            top+="┌$(rep '─' $((w-2)))┐ "
+            mid+="│$(fit " $1" $((w-2)))│ "
+            key+="│$(fit " $2" $((w-2)))│ "
+            bot+="└$(rep '─' $((w-2)))┘ "
+        }
+        crow() { # crow <rowstring> — center a button row in the box
+            local s="${1% }" pad=$(( (CW - ${#1} + 1) / 2 ))
+            [ "$pad" -lt 0 ] && pad=0
+            printf '│ %s │\n' "$(fit "$(rep ' ' $pad)$s" "$CW")"
+        }
+        top=""; mid=""; key=""; bot=""
+        btn "STOP" "x" 9; btn "PAUSE" "space" 9; btn "MUTE" "m" 9; btn "NOW" "n" 9
+        crow "$top"; crow "$mid"; crow "$key"; crow "$bot"
+        top=""; mid=""; key=""; bot=""
+        btn "VOL -" "-" 9; btn "VOL +" "+" 9; btn "STATIONS" "s" 19
+        crow "$top"; crow "$mid"; crow "$key"; crow "$bot"
+        printf '│ %s │\n' "$(fit " q quit — music keeps playing" "$CW")"
+    elif [ "$W" -ge 33 ]; then
+        printf '│ %s │\n' "$(fit " [x STOP] [space PAUSE] [m MUTE]" "$CW")"
+        printf '│ %s │\n' "$(fit " [- VOL-] [+ VOL+] [s STATIONS]" "$CW")"
+        printf '│ %s │\n' "$(fit " [n NOW]  q quit — music plays on" "$CW")"
+    else
+        printf '│ %s │\n' "$(fit " q quit · space pause · x stop" "$CW")"
+        printf '│ %s │\n' "$(fit " + - vol · m mute · s stations" "$CW")"
+        printf '│ %s │\n' "$(fit " n now" "$CW")"
+    fi
+    printf '╰%s╯\n' "$(rep '─' $((W-2)))"
+}
+
+# ---------------------------------------------------------------- protocol
+DEST=""; IDENTARG=()
+set_machine() { # set_machine <name> -> rc=1 unknown
+    local d i
+    d=$(machine_dest "$1") || return 1
+    DEST="$d"; IDENTARG=()
+    i=$(machine_ident "$1")
+    if [ -n "$i" ] && [ "$i" != "-" ]; then
+        IDENTARG=(-i "${i/#\~/$HOME}")
+    fi
+    return 0
+}
+rfish() { ssh -n -o ConnectTimeout=8 "${IDENTARG[@]}" "$DEST" "fish -ic '$1'" 2>/dev/null; }
+
+# query_status -> sets ST_STATE ST_TITLE ST_VOL ST_MUTED
+query_status() {
+    local raw
+    raw=$(rfish "__radio_ctl_once status")
+    ST_STATE=standby; ST_TITLE=""; ST_VOL=0; ST_MUTED=0
+    [ -n "$raw" ] || return 0
+    case "$raw" in *"nothing playing"*) return 0 ;; esac
+    case "$raw" in
+        *"⏸"*) ST_STATE=paused ;;
+        *)     ST_STATE=playing ;;
+    esac
+    case "$raw" in *muted*) ST_MUTED=1 ;; esac
+    ST_VOL=$(printf %s "$raw" | sed -n 's/.*\[vol \([0-9]*\).*/\1/p')
+    [ -n "$ST_VOL" ] || ST_VOL=0
+    ST_TITLE=$(printf %s "$raw" | sed 's/^[▶⏸] //; s/ *\[vol.*$//')
+}
+
+term_width() {
+    local c
+    c=$(tput cols 2>/dev/null || echo 46)
+    [ "$c" -gt 56 ] && c=56
+    [ "$c" -lt 28 ] && c=28
+    echo "$c"
+}
+
+# ---------------------------------------------------------------- modes
+render_once() { # render_once <machine>
+    local machine="$1"
+    if [ -n "${RADIO_REMOTE_STATE:-}" ]; then
+        IFS='|' read -r ST_STATE ST_TITLE ST_VOL ST_MUTED <<< "$RADIO_REMOTE_STATE"
+    else
+        set_machine "$machine" || { echo "unknown machine: $machine" >&2; return 2; }
+        query_status
+    fi
+    render_frame "$(term_width)" "$machine" "$ST_STATE" "$ST_TITLE" "$ST_VOL" "$ST_MUTED"
+}
+
+stations_menu() { # stations_menu (uses DEST)
+    local rows i=0 key desc choice
+    rows=$(rfish "__radio_stations")
+    [ -n "$rows" ] || { echo "can't fetch station list"; sleep 1; return; }
+    local keys=()
+    echo "stations:"
+    while IFS=$'\t' read -r _g key _u desc; do
+        i=$((i+1)); keys+=("$key")
+        printf "%3d) %-14s %s\n" "$i" "$key" "$desc"
+    done <<< "$rows"
+    printf "number (enter = cancel): "
+    read -r choice
+    case "$choice" in ''|*[!0-9]*) return ;; esac
+    if [ "$choice" -ge 1 ] && [ "$choice" -le "${#keys[@]}" ]; then
+        rfish "radio ${keys[$((choice-1))]}" >/dev/null
+        sleep 2
+    fi
+}
+
+interactive() { # interactive <machine>
+    local machine="$1"
+    set_machine "$machine" || { echo "unknown machine: $machine (config: $CONFIG_FILE)" >&2; return 2; }
+    printf '\033[?1049h'  # alternate screen
+    local RAW=0
+    if [ -t 0 ]; then stty -icanon -echo; RAW=1; fi
+    cleanup() { [ "$RAW" = 1 ] && stty sane; printf '\033[?1049l'; }
+    trap cleanup EXIT
+    query_status
+    while :; do
+        printf '\033[H'
+        render_frame "$(term_width)" "$machine" "$ST_STATE" "$ST_TITLE" "$ST_VOL" "$ST_MUTED"
+        printf '\033[J'
+        local k=""
+        IFS= read -rsn1 -t 3 k || { query_status; continue; }
+        case "$k" in
+            ' '|p) rfish "__radio_ctl_once pause" >/dev/null ;;
+            +|=)   rfish "__radio_ctl_once vol+" >/dev/null ;;
+            -|_)   rfish "__radio_ctl_once vol-" >/dev/null ;;
+            m)     rfish "__radio_ctl_once mute" >/dev/null ;;
+            x)     rfish "__radio_ctl_once stop" >/dev/null ;;
+            n)     : ;;
+            s)
+                [ "$RAW" = 1 ] && stty sane
+                printf '\033[?1049l'
+                stations_menu
+                printf '\033[?1049h'
+                [ "$RAW" = 1 ] && stty -icanon -echo
+                ;;
+            q) break ;;
+            *) continue ;;
+        esac
+        query_status
+    done
+}
+
+main() {
+    if [ "${RADIO_REMOTE_LIB:-}" = 1 ]; then return 0; fi
+    local machine=""
+    case "${1:-}" in
+        --render-once) render_once "${2:-$(machine_default)}" ;;
+        -h|--help)
+            echo "usage: radio-remote [--render-once] [machine]"
+            echo "machines: $(machine_names | paste -sd' ' -)"
+            echo "keys: space pause · +/- volume · m mute · s stations · x stop · n now · q quit"
+            ;;
+        *) machine="${1:-$(machine_default)}"; interactive "$machine" ;;
+    esac
+}
+main "$@"

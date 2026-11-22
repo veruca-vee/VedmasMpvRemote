@@ -1,0 +1,37 @@
+ok   - R1 frame opens with ╭
+ok   - R1 frame closes with ╯
+ok   - R1 uniform line width
+ok   - R2 shows machine
+ok   - R2 shows title
+ok   - R2 shows play glyph
+ok   - R2 shows volume number
+ok   - R3 75% -> 15 filled
+ok   - R3 0% -> 0 filled
+ok   - R3 100% -> 20 filled
+ok   - R4 muted shows MUTED
+ok   - R4 muted bar empty
+ok   - R5 standby label
+ok   - R5 standby hint
+ok   - R5 no fake title
+ok   - R6 truncates with …
+ok   - R6 stays in width
+ok   - R7 width 46 respected
+ok   - R7 width 38 respected
+ok   - R7 width 30 respected
+ok   - R7 full grid has STATIONS at 46
+ok   - R7 minimal at 30 has legend q
+ok   - R8 key label 'x' drawn
+ok   - R8 key label 'space' drawn
+ok   - R8 key label 'm' drawn
+ok   - R8 key label 'n' drawn
+ok   - R8 key label '+' drawn
+ok   - R8 key label '-' drawn
+ok   - R8 key label 's' drawn
+ok   - R8 key label 'q' drawn
+ok   - C1 known machine dest
+ok   - C1 unknown fails
+ok   - C3 first machine is default
+ok   - C2 fallback default exists
+ok   - K2 render-once offline
+
+passed: 35  failed: 0
