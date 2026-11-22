@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# radio-remote — a drawn picture remote for the fish radio suite. 🖤🩷
+# vedma's MPV remote — a drawn picture remote for the fish radio suite. 🖤🩷
 #
 # The face is box-drawing characters; the protocol underneath is the
 # suite's own: __radio_ctl_once for control, __radio_stations for the
@@ -86,7 +86,7 @@ render_frame() {
     local line
     # top border + header
     printf '╭%s╮\n' "$(rep '─' $((W-2)))"
-    local hdr_l=" RADIO REMOTE" hdr_r="$machine "
+    local hdr_l=" VEDMA'S MPV REMOTE" hdr_r="$machine "
     line=$(fit "$hdr_l" $((CW - ${#hdr_r})))
     printf '│ %s%s │\n' "$line" "$hdr_r"
     printf '├%s┤\n' "$(rep '─' $((W-2)))"

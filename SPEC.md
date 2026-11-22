@@ -1,4 +1,4 @@
-# radio-remote — spec
+# vedma's MPV remote — spec
 
 A phone-first terminal remote for the fish `radio` suite. It draws a
 picture of a remote control (box-drawing characters only, no emoji)
