@@ -1,9 +1,16 @@
-# vedma's MPV remote
+# Vedma's MPV Remote
 
-A drawn picture remote for the fish **radio suite** (package: vedma's MPV remote; command: `radio-remote`), built for a phone
-terminal. It renders a remote control — LCD now-playing screen, volume
-bar, labelled buttons — in box-drawing characters (no emoji, no
-images), and drives a radio playing on another machine over ssh.
+```
+        \ | /
+      --  🌵  --      a little cute remote for controlling
+        / | \         mpv on all your devices 🖤🩷
+```
+
+A drawn picture remote for the fish **radio suite** (command:
+`radio-remote`), built for a phone terminal. It renders a remote
+control — LCD now-playing screen, volume bar, labelled buttons — in
+box-drawing characters (no emoji, no images), and drives a radio
+playing on another machine over ssh.
 
 ```
 ╭────────────────────────────────────────────╮
